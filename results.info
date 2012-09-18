@@ -1,0 +1,12 @@
+name = Results info
+description = "Match Results with coupon"
+package = ChronoModules
+core = 7.x
+dependencies[] = system (>7.10)
+files[] = results_module.module
+
+; Information added by drupal.org packaging script on 2012-05-17
+version = "7.x-1.0"
+core = "7.x"
+project = "config_module"
+;datestamp = "1337292349"

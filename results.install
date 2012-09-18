@@ -1,0 +1,77 @@
+<?php
+
+/*
+*  Implement hook_schema()
+*/
+
+function results_schema(){
+	
+	$schema['results_coupons'] = array(
+		'description' => 'Created Coupons Table',
+		'fields' => array(
+		  'coupon_id' => array(
+		    'description' => 'Coupon ID',
+		    'type' => 'int',
+		    'size' => 'big',
+		    'not null' => TRUE,
+		  ),
+		  'timestamp_created' => array(
+		    'description' => 'Coupon created date',
+		    'type' => 'int',
+		    'not null' => FALSE,
+		  ),
+		  'times_viewed' => array(
+		    'description' => 'Times that the coupon has been viewed',
+		    'type' => 'int',
+		    'not null' => TRUE,
+		  ),
+		  'expired' => array(
+		    'description' => 'The date that the coupon expites',
+		    'type' => 'int',
+		    'size' => 'tiny',
+		    'not null' => FALSE,
+		  ),
+		  'timestamp_activated' => array(
+		    'description' => 'Coupon activated date',
+		    'type' => 'int',
+		    'not null' => FALSE,
+		  ),
+		  'active' => array(
+		    'description' => 'Boolean variable for activated coupons',
+		    'type' => 'int',
+		    'size' => 'tiny',
+		    'not null' => TRUE,
+		    'default' => 0,
+		  ),
+		),
+		'primary key' => array('coupon_id'),
+	);
+
+	$schema['results_table_new'] = array(
+		'description' => 'The table with the results from the xml file',
+		'fields' => array(
+		  'ID' => array(
+		    'description' => 'The id of the table record',
+		    'type' => 'serial',
+		    'not null' => TRUE,
+		  ),
+		  'results' => array(
+		    'description' => 'Serialized array of the results table',
+		    'type' => 'text',
+		    'not null' => TRUE,
+		  ),
+		),
+		'primary key' => array('ID'),
+	);
+
+	return $schema;
+	
+}
+
+function results_install(){
+	drupal_cron_run();
+}
+
+function results_uninstall() {
+  variable_del('show_results');
+}
