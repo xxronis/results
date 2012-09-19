@@ -299,64 +299,75 @@ function results_form_submit($form, &$form_state){
 function results_node_view($node, $view_mode, $langcode) {
 //session_start();
 	$modes = array('full','default'); //include the full mode for clarity
-	
-	if (in_array($node->type,variable_get('results_nodes'))  and variable_get('show_results') and in_array($view_mode,$modes) ) {
-		if(isset($_SESSION['valid_coupon'])) {
-	
-			$active_coupon = substr($_SESSION['valid_coupon'], -10);
 
-			//validate coupon
-			$query = db_select('results_coupons', 'r');						//check active coupon 
-			$query->fields('r', array('coupon_id','active'))
-		  			->condition('r.coupon_id', $active_coupon)
-		  			->condition('r.active', 1);
-			$check = $query->execute();
+	$ntypes = variable_get('results_nodes');
+	
+	if(!empty($ntypes)){
+		foreach ($ntypes as $types){
+			if(array_key_exists($types,$ntypes)){
+				$checked[] = $types;													//fill $checked with selected node types
+			}
+		}
+
+
+		if (in_array($node->type,$checked)  and variable_get('show_results') and in_array($view_mode,$modes) ) {
+			if(isset($_SESSION['valid_coupon'])) {
+	
+				$active_coupon = substr($_SESSION['valid_coupon'], -10);
+
+				//validate coupon
+				$query = db_select('results_coupons', 'r');						//check active coupon 
+				$query->fields('r', array('coupon_id','active'))
+			  			->condition('r.coupon_id', $active_coupon)
+			  			->condition('r.active', 1);
+				$check = $query->execute();
 	
 	
-			if($check->rowCount() != 1){
-				drupal_set_message('Your coupon : '.$active_coupon.' is INvalid!','error');
-				  $node->content['results_form'] = array(
-				  	 '#item'	  => 'item',	
-					 '#markup' => results_show_form(),  
-				#			 '#theme' => 'mymodule_my_additional_field',
-				  );
-			}else{
+				if($check->rowCount() != 1){
+					drupal_set_message('Your coupon : '.$active_coupon.' is INvalid!','error');
+					  $node->content['results_form'] = array(
+					  	 '#item'	  => 'item',	
+						 '#markup' => results_show_form(),  
+					#			 '#theme' => 'mymodule_my_additional_field',
+					  );
+				}else{
 								
 				
-				if(checkDatesAndViews($active_coupon)){                ####### Perform date and views check
+					if(checkDatesAndViews($active_coupon)){                ####### Perform date and views check
 				
-						$coupon_updated = db_update('results_coupons') 					//Update How many times viewed
-		 				  ->expression('times_viewed', 'times_viewed + :times_viewed', array(':times_viewed' => 1))
-						  ->condition('coupon_id',$active_coupon)
-						  ->execute();				
-						  
-						drupal_set_message('You are watching results because your coupon : '.$active_coupon.' is Valid!');
-						$node->content['results_table'] = array(
-						 '#item'	  => 'item',
-						 '#markup' => results_page(), 
-						#			 '#theme' => 'mymodule_my_additional_field',
-						);
-				  }else{
-				  		
-						$node->content['results_form'] = array(
-						 '#item'	  => 'item',
-						 '#markup' => results_show_form(), 
-						#			 '#theme' => 'mymodule_my_additional_field',
-						);				  		
-				  }
-			}	
+							$coupon_updated = db_update('results_coupons') 					//Update How many times viewed
+			 				  ->expression('times_viewed', 'times_viewed + :times_viewed', array(':times_viewed' => 1))
+							  ->condition('coupon_id',$active_coupon)
+							  ->execute();				
+							  
+							drupal_set_message('You are watching results because your coupon : '.$active_coupon.' is Valid!');
+							$node->content['results_table'] = array(
+							 '#item'	  => 'item',
+							 '#markup' => results_page(), 
+							#			 '#theme' => 'mymodule_my_additional_field',
+							);
+					  }else{
+					  		
+							$node->content['results_form'] = array(
+							 '#item'	  => 'item',
+							 '#markup' => results_show_form(), 
+							#			 '#theme' => 'mymodule_my_additional_field',
+							);				  		
+					  }
+				}	
 		
 		
-		}else{					###########// SESSION not set
+			}else{					###########// SESSION not set
 		
-			  $node->content['results_form'] = array(
-			    '#item'	  => 'item',
-				 '#markup' => results_show_form(), 
-			#			 '#theme' => 'mymodule_my_additional_field',
-			  );		
-		}
-		  		  
-	 } 
+				  $node->content['results_form'] = array(
+					 '#item'	  => 'item',
+					 '#markup' => results_show_form(), 
+				#			 '#theme' => 'mymodule_my_additional_field',
+				  );		
+			}
+			  		  
+		 } 
+	 }  //END if(!empty($ntypes))
 	 
 }
 
