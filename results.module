@@ -45,7 +45,9 @@ function results_permission() {
 
 
 function results_getcode(){
-	$random = substr(number_format(time() * rand(),0,'',''),0,10);
+
+	//$random = substr(number_format(time() * rand(),0,'',''),0,10);   Numeric
+	$random = substr(str_shuffle(MD5(microtime())), 0, 10);				//Alphanumeric
 
 	$query = db_select('results_coupons', 'r');
 	$query->fields('r', array('coupon_id'))
@@ -157,6 +159,7 @@ function results_edit_form(){
 }
 function results_show_form(){
 	$content = drupal_get_form('results_form');
+	drupal_set_message('if you own a coupon you can validate it now!');
 	return render($content);
 }
 function results_form(){
@@ -170,7 +173,6 @@ function results_form(){
 	$form['legend-text']['couponid'] = array(
 		'#type' 				=> 'textfield',
 		'#title' 			=> t('COUPON ID'),
-#		'#default_value' 	=> variable_get('space_text'),
 		'#description' 	=> t('Insert your Coupon ID'),
 		'#required'			=> TRUE,
 	);	
@@ -179,18 +181,41 @@ function results_form(){
 		'#title' => t('VALIDATE'),
 		'#value' => t('VALIDATE'),
 	);	
+
 	return $form;
 }	
 function results_config_form(){
 	//build form
+
+	
 	$form['legend-results-edit'] = array(
 		'#type' 	=> 'fieldset',
-		'#title' => 'Enable or Disable Results on Node articles',
-	);
+		'#title' => 'Enable or Disable Results on Nodes',
+	);	
+	$form['legend-results-types'] = array(
+		'#type' 	=> 'fieldset',
+		'#title' => 'Choose node types',
+	);	
+  $types = node_type_get_types();						// get node types
+  $options = array();
+  foreach ($types as $type) {
+    $options[$type->type] = $type->name;
+  }
+	if (!empty($options)) { 									//better safe than sorry..
+		$form['legend-results-types']['nodetypes'] = array(
+			'#type' 				=> 'checkboxes',
+			'#title' 			=> 'Node Types',
+			'#description'		=> t('Apply Results to only the following node types.'),
+			'#multiple'			=> TRUE,
+			'#options'			=> $options,
+			'#default_value' 	=> variable_get('results_nodes',array()),
+		);
+	}	
+	//exit(var_dump($options));
 	
 	$form['legend-results-edit']['show_results'] = array(
 		'#type' 				=> 'checkbox',
-		'#title' 			=> 'Show Results in Articles',  
+		'#title' 			=> 'Show Results in nodes',  
 		'#default_value' 	=> variable_get('show_results'),
 	);
 
@@ -203,11 +228,36 @@ function results_config_form(){
 	return $form;
 }	
 
+
 function results_config_form_submit($form, &$form_state){
 	variable_set('show_results',$form_state['values']['show_results']);
+	variable_set('results_nodes',$form_state['values']['nodetypes']);
+	
+	//prepare message with the checked ones
+	foreach ($form_state['values']['nodetypes'] as $types){
+		if(array_key_exists($types,$form_state['values']['nodetypes'])){
+			$checked[] = $types;
+		}
+	}
+	if(!empty($checked)){
+		$list = array(
+		  '#theme' => 'list',
+		  '#items' => array(),
+		);
+		foreach ($checked as $sist){
+			$list['#items'][] = $sist;
+		}
+		$response = theme('item_list',$list);
+		$response .= t(' Content types are enabled.');
+	}else{
+		$response = t('No Content Types enabled for results.');
+	}	
+	
+	drupal_set_message($response);
 	drupal_set_message(t('Your configuration is saved.'));
-	drupal_set_message(variable_get('show_results'));
 }
+
+
 function results_form_submit($form, &$form_state){
 
 	$coupon_id = $form_state['values']['couponid'];
@@ -248,8 +298,9 @@ function results_form_submit($form, &$form_state){
  */
 function results_node_view($node, $view_mode, $langcode) {
 //session_start();
-	if ($node->type == 'article'  and variable_get('show_results')) {
+	$modes = array('full','default'); //include the full mode for clarity
 	
+	if (in_array($node->type,variable_get('results_nodes'))  and variable_get('show_results') and in_array($view_mode,$modes) ) {
 		if(isset($_SESSION['valid_coupon'])) {
 	
 			$active_coupon = substr($_SESSION['valid_coupon'], -10);
@@ -264,9 +315,9 @@ function results_node_view($node, $view_mode, $langcode) {
 	
 			if($check->rowCount() != 1){
 				drupal_set_message('Your coupon : '.$active_coupon.' is INvalid!','error');
-				  $node->content[] = array(
-					 '#markup' => results_show_form(), 
-					 '#weight' => 10, 
+				  $node->content['results_form'] = array(
+				  	 '#item'	  => 'item',	
+					 '#markup' => results_show_form(),  
 				#			 '#theme' => 'mymodule_my_additional_field',
 				  );
 			}else{
@@ -280,16 +331,16 @@ function results_node_view($node, $view_mode, $langcode) {
 						  ->execute();				
 						  
 						drupal_set_message('You are watching results because your coupon : '.$active_coupon.' is Valid!');
-						$node->content[] = array(
+						$node->content['results_table'] = array(
+						 '#item'	  => 'item',
 						 '#markup' => results_page(), 
-						 '#weight' => 9,
 						#			 '#theme' => 'mymodule_my_additional_field',
 						);
 				  }else{
-				  		//drupal_set_message('Your coupon : '.$active_coupon.' is Expired! or you viewed the content over 10 times','error');
-						$node->content[] = array(
+				  		
+						$node->content['results_form'] = array(
+						 '#item'	  => 'item',
 						 '#markup' => results_show_form(), 
-						 '#weight' => -1, 
 						#			 '#theme' => 'mymodule_my_additional_field',
 						);				  		
 				  }
@@ -298,18 +349,56 @@ function results_node_view($node, $view_mode, $langcode) {
 		
 		}else{					###########// SESSION not set
 		
-			drupal_set_message('if you own a coupon you can validate it now!');
-			  $node->content[] = array(
+			  $node->content['results_form'] = array(
+			    '#item'	  => 'item',
 				 '#markup' => results_show_form(), 
-				 '#weight' => -1, 
 			#			 '#theme' => 'mymodule_my_additional_field',
 			  );		
-			
 		}
 		  		  
 	 } 
 	 
 }
+
+
+/**
+ * Implements hook_field_extra_fields().
+ *
+ * Declare our Results fields in manage fields.
+ */
+function results_field_extra_fields() {
+  // The levels of the array that we return correspond to the
+  // entity type, bundle and then either 'display' or 'form'.
+  // In this case, we apply to 'page' nodes, when we display them.
+  $extra = array();
+	$ntypes = variable_get('results_nodes',array());
+	if(!empty($ntypes)){
+		foreach ($ntypes as $types){
+			if(array_key_exists($types,$ntypes)){
+				$checked[] = $types;													//fill $checked with selected node types
+			}
+		}
+		foreach ($checked as $type){
+			$extra['node'][$type]['display'] = array(
+			 // The keys here must correspond to the keys of the items
+			 // that we add in our hook_node_view() or similar function.
+			 'results_form' => array(
+				'label' => t('Coupon input Form'),
+				'description' => t('Form to place the coupon id, added in results_node_view().'),
+				'weight' => 10,
+			 ),
+			 'results_table' => array(
+				'label' => t('Results table'),
+				'description' => t('The results table, added in results_node_view().'),
+				'weight' => 10,
+			 ),    
+			);		
+		}
+	}
+	return $extra;
+}
+
+
 
 
 function checkDatesAndViews($coupon_id){
@@ -325,14 +414,15 @@ function checkDatesAndViews($coupon_id){
 	$numDays = abs(time() - $time_activated)/60/60/24;
 	
 	
-	for ($i = 0; $i < $numDays; $i++) {
-		 $creation_date = date('Y-m-d H:i:s', strtotime("+{$i} day", $time_activated)) . '<br />';
-	}	
+	//for ($i = 0; $i < $numDays; $i++) {
+		 $creation_date = date('Y-m-d H:i:s', strtotime("+0 day", $time_activated)) . '<br />';
+	//}	
 	//exit();
 	
 	
-	if(($numDays <= 1) and ($views < 11)){
-		drupal_set_message('Coupon Created on '.$creation_date.' viewed '.$views.' times','warning');	
+	if(($numDays <= 1) and ($views < 10)){
+		$views_message = $views + 1;
+		drupal_set_message('Coupon Activated on '.$creation_date.' viewed '.$views_message.' times','warning');	
 		return true;
 	}else{
 		$coupon_updated = db_update('results_coupons') 					//Update Coupons - deactivate
@@ -344,17 +434,17 @@ function checkDatesAndViews($coupon_id){
 		  ->execute();	
 		  
 		  if(isset($_SESSION['valid_coupon'])) unset($_SESSION['valid_coupon']);	
-			if($views >=10){
+			if($views > 9){
 				drupal_set_message('Coupon Expired, content viewed over 10 times','error');
 			}else{
-				drupal_set_message('Coupon Expired, coupon was created over a day ago : Coupon Created on '.$creation_date,'error');
+				drupal_set_message('Coupon Expired, coupon was activated over a day ago : Coupon activated on '.$creation_date,'error');
 			}
 		  return false;
 	}
 	
 }
 
-#################### cron
+#################### cron 
 
 /**
  * Implements hook_cron().
@@ -363,6 +453,10 @@ function results_cron(){
 	myxml();
 }
 
-
-
+/**
+ * Implements hook_enable().
+ */
+function results_enable() {
+drupal_set_message($message = t('The Results  module was successfully enabled. Please configure it '.l('here','admin/config/development/results')), $type = 'warning');
+}
 
