@@ -7,7 +7,7 @@ function results_menu() {
 	
 	$items['getcode'] = array(
 		'title'            	=> t('Generate code'),
-		'menu_name'				=>	'main-menu',		
+		'menu_name'				=>	'navigation',		
 		'page callback'    	=> 'results_getcode',
 		'description' 			=> 'Configure terms.',
 		'access arguments' 	=> array('generate results code'),
@@ -15,7 +15,7 @@ function results_menu() {
 	);
 	$items['xmlparse'] = array(
 		'title'            	=> t('Generate xml'),
-		'menu_name'				=>	'main-menu',		
+		'menu_name'				=>	'navigation',		
 		'page callback'    	=> 'myxml',
 		'description' 			=> 'Configure terms.',
 		'access arguments' 	=> array('generate results code'),
@@ -85,7 +85,7 @@ function results_getcode(){
 
 function myxml(){
 
-	$path = 'http://external:zxcvbn@drupalcourse.lab.wedia.gr/docs/Lab5-stats.xml';
+	$path = drupal_get_path('module', 'results') . 'xmlsource.xml';
 	$ch = curl_init();
   curl_setopt($ch, CURLOPT_URL,$path);
   curl_setopt($ch, CURLOPT_FAILONERROR,1);
