@@ -1,6 +1,6 @@
 name = Results info
 description = "Match Results with coupon"
-package = OpenBet Custom
+package = Getreal
 core = 7.x
 dependencies[] = system (>7.10)
 files[] = results_module.module
